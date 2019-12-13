@@ -2,13 +2,14 @@
 
 using System;
 using System.IO;
+using System.Threading;
 using System.Windows.Forms;
 
 namespace BtsFpsPatcher
 {
     internal static class Program
     {
-        public static void PatchFile(byte[] exe, long offset, string path)
+        public static bool PatchFile(byte[] exe, long offset, string path)
         {
             using (MemoryStream memStream = new MemoryStream(exe))
             {
@@ -19,13 +20,26 @@ namespace BtsFpsPatcher
                 memStream.Write(fpsLimit, 0, fpsLimit.Length);
                 memStream.Seek(0, SeekOrigin.Begin);
                 Form1.IncrementProgress(1);
+
+                DateTime then = DateTime.Now;
+                while (IsFileLocked(path) && DateTime.Now - then < TimeSpan.FromSeconds(30))
+                {
+                    Form1.SetStatus("Waiting for file access...", System.Drawing.Color.YellowGreen);
+                    Thread.Sleep(TimeSpan.FromSeconds(1));
+                }
+                if (IsFileLocked(path))
+                {
+                    Form1.SetStatus("Error: Could not write to file.", System.Drawing.Color.Red);
+                    return false;
+                }
                 Form1.SetStatus("Writing to disk...", System.Drawing.Color.YellowGreen);
                 using (FileStream fs = new FileStream(path, FileMode.OpenOrCreate))
                 {
                     memStream.CopyTo(fs);
                     fs.Flush();
                 }
-                Form1.SetStatus("Game patched!", System.Drawing.Color.Green);
+                Form1.SetStatus("Address patched!", System.Drawing.Color.Green);
+                return true;
             }
         }
 
@@ -41,6 +55,7 @@ namespace BtsFpsPatcher
             byte[] exe = File.ReadAllBytes(path);
             var patterns = new Pattern.Byte[][] { Pattern.Transform("9A 99 05 42"),
                                                   Pattern.Transform("9A 99 85 41")};
+            bool isPatched = true;
             foreach (Pattern.Byte[] pb in patterns)
             {
                 if (!Pattern.Find(exe, pb, out long offsetFound))
@@ -49,8 +64,15 @@ namespace BtsFpsPatcher
                     Form1.SetProgress(100, System.Drawing.Color.Red);
                     return;
                 }
-                PatchFile(exe, offsetFound, path);
+                if (!PatchFile(exe, offsetFound, path))
+                {
+                    Form1.SetStatus("Error: Executable file could not be patched.", System.Drawing.Color.Red);
+                    isPatched = false;
+                    break;
+                }
             }
+            if (isPatched)
+                Form1.SetStatus("Game patched!", System.Drawing.Color.Green);
         }
 
         private static void CheckBackup(string path)
