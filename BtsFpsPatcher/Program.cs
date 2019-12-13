@@ -1,26 +1,32 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using PatternFinder;
+
+using System;
 using System.IO;
-using System.Reflection;
 using System.Windows.Forms;
 
-using PatternFinder;
-
-using SharpDisasm;
 namespace TellTaleWidescreenPatcher
 {
     internal static class Program
     {
-
-        /// <summary>
-        /// The main entry point for the application.
-        /// </summary>
-        [STAThread]
-        private static void Main()
+        public static void PatchFile(byte[] exe, long offset, string path)
         {
-            Application.EnableVisualStyles();
-            Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new Form1());
+            using (MemoryStream memStream = new MemoryStream(exe))
+            {
+                float fps = Form1.GetFPSLimit();
+                byte[] fpsLimit = fps > 0 ? BitConverter.GetBytes(1000.0f / Form1.GetFPSLimit()) : BitConverter.GetBytes(0);
+
+                memStream.Seek(offset, SeekOrigin.Begin);
+                memStream.Write(fpsLimit, 0, fpsLimit.Length);
+                memStream.Seek(0, SeekOrigin.Begin);
+                Form1.IncrementProgress(1);
+                Form1.SetStatus("Writing to disk...", System.Drawing.Color.YellowGreen);
+                using (FileStream fs = new FileStream(path, FileMode.OpenOrCreate))
+                {
+                    memStream.CopyTo(fs);
+                    fs.Flush();
+                }
+                Form1.SetStatus("Game patched!", System.Drawing.Color.Green);
+            }
         }
 
         public static void PatchFunction(string path)
@@ -35,36 +41,15 @@ namespace TellTaleWidescreenPatcher
             byte[] exe = File.ReadAllBytes(path);
             var patterns = new Pattern.Byte[][] { Pattern.Transform("9A 99 05 42"),
                                                   Pattern.Transform("9A 99 85 41")};
-            foreach(Pattern.Byte[] pb in patterns)
+            foreach (Pattern.Byte[] pb in patterns)
             {
-                if(!Pattern.Find(exe, pb, out long offsetFound))
+                if (!Pattern.Find(exe, pb, out long offsetFound))
                 {
-                Form1.SetStatus("Error: FPS Limit could not be found. Already patched or unsupported version.", System.Drawing.Color.Red);
-                Form1.SetProgress(100, System.Drawing.Color.Red);
-                return;
+                    Form1.SetStatus("Error: FPS Limit could not be found. Already patched or unsupported version.", System.Drawing.Color.Red);
+                    Form1.SetProgress(100, System.Drawing.Color.Red);
+                    return;
                 }
                 PatchFile(exe, offsetFound, path);
-            }
-        }
-
-        public static void PatchFile(byte[] exe, long offset, string path)
-        {
-            using (MemoryStream memStream = new MemoryStream(exe))
-            {
-                float fps = Form1.GetFPSLimit();
-                byte[] fpsLimit = fps > 0 ? BitConverter.GetBytes(1000.0f/Form1.GetFPSLimit()) : BitConverter.GetBytes(0);
-
-                memStream.Seek(offset, SeekOrigin.Begin);
-                memStream.Write(fpsLimit, 0, fpsLimit.Length);
-                memStream.Seek(0, SeekOrigin.Begin);
-                Form1.IncrementProgress(1);
-                Form1.SetStatus("Writing to disk...", System.Drawing.Color.YellowGreen);
-                using (FileStream fs = new FileStream(path, FileMode.OpenOrCreate))
-                {
-                    memStream.CopyTo(fs);
-                    fs.Flush();
-                }
-                Form1.SetStatus("Game patched!", System.Drawing.Color.Green);
             }
         }
 
@@ -108,6 +93,17 @@ namespace TellTaleWidescreenPatcher
 
             //file is not locked
             return false;
+        }
+
+        /// <summary>
+        /// The main entry point for the application.
+        /// </summary>
+        [STAThread]
+        private static void Main()
+        {
+            Application.EnableVisualStyles();
+            Application.SetCompatibleTextRenderingDefault(false);
+            Application.Run(new Form1());
         }
     }
 }
