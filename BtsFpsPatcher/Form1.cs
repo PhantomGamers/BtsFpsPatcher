@@ -9,6 +9,8 @@ namespace BtsFpsPatcher
 {
     public partial class Form1 : Form
     {
+        private static readonly string GameExe = "BeyondTwoSouls.exe";
+        private static readonly string GameName = "Beyond Two Souls";
         private static Form1 form = null;
 
         public Form1()
@@ -48,7 +50,7 @@ namespace BtsFpsPatcher
 
         public void CheckStatus()
         {
-            if (File.Exists(this.PathBox.Text) && Path.GetExtension(this.PathBox.Text) == ".exe" && Path.GetFileNameWithoutExtension(this.PathBox.Text) == "BeyondTwoSouls")
+            if (File.Exists(this.PathBox.Text) && Path.GetFileName(this.PathBox.Text) == GameExe)
             {
                 this.StatusText.Text = "Found executable!";
                 this.StatusText.ForeColor = Color.YellowGreen;
@@ -71,7 +73,7 @@ namespace BtsFpsPatcher
             // when the dialog is dismissed.
             OpenFileDialog dlg = new OpenFileDialog
             {
-                Filter = "Beyond Two Souls | BeyondTwoSouls.exe"
+                Filter = $"{GameName} | {GameExe}"
             };
             DialogResult result = dlg.ShowDialog();
             // if a file is selected
@@ -96,7 +98,7 @@ namespace BtsFpsPatcher
             if (e.Data.GetDataPresent(DataFormats.FileDrop))
             {
                 string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
-                if (files.Length == 1 && Path.GetExtension(files[0]) == ".exe" && Path.GetFileNameWithoutExtension(files[0]) == "BeyondTwoSouls")
+                if (files.Length == 1 && Path.GetExtension(files[0]) == ".exe" && Path.GetFileName(files[0]) == GameExe)
                     e.Effect = DragDropEffects.Copy;
             }
         }
