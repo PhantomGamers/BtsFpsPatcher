@@ -5,7 +5,7 @@ using System.IO;
 using System.Reflection;
 using System.Windows.Forms;
 
-namespace TellTaleWidescreenPatcher
+namespace BtsFpsPatcher
 {
     public partial class Form1 : Form
     {

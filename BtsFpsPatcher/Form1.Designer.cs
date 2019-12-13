@@ -1,4 +1,4 @@
-﻿namespace TellTaleWidescreenPatcher
+﻿namespace BtsFpsPatcher
 {
     partial class Form1
     {
